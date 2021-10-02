@@ -67,6 +67,11 @@ for line in library.readlines():
             novels.append(Novel(line[0], codeAndTitle[0], codeAndTitle[1]))
             totalToUpdate += 1
 
+if not os.path.isdir("ncode"):
+	os.mkdir("ncode")
+if not os.path.isdir("novel18"):
+	os.mkdir("novel18")
+
 ncode = os.listdir("ncode")
 novel18 = os.listdir("novel18")
 translated = len([f for f in os.listdir("translated")])
