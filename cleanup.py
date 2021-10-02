@@ -22,7 +22,9 @@ headers = {
     'Accept-Language': 'en-US,en;q=0.9',
 }
 
-translatedPieces = natsorted([piece for piece in os.listdir("translated")])
+translatedPieces = []
+if os.path.isdir("translated"):
+    translatedPieces = natsorted([piece for piece in os.listdir("translated")])
 
 class Novel:
     def __init__(self, status, code, title):
@@ -72,22 +74,34 @@ toRead = list(filter(lambda novel: novel.status == "Null", novels))
 reading = list(filter(lambda novel: novel.status != "Null", novels))
 alreadyDownloaded = ncode + novel18
 alreadyDownloaded = [novel[:-4] for novel in alreadyDownloaded]
+category = [f"ncode" for file in ncode] + [f"novel18" for file in novel18]
+categoryForTitle = dict(zip(alreadyDownloaded, category))
 progress = 0
 
-shutil.rmtree("temp")
-shutil.rmtree("translated")
-shutil.rmtree("toTranslate")
+if os.path.isdir("temp"):
+    shutil.rmtree("temp")
+if os.path.isdir("translated"):
+    shutil.rmtree("translated")
+if os.path.isdir("toTranslate"):
+    shutil.rmtree("toTranslate")
+
+total = len([filter(lambda novel: novel.code in alreadyDownloaded, novels)])
 
 for novel in novels:
-    print(f"Cleaning up {progress}/{len(novels)} novels")
-    url = f"https://ncode.syosetu.com/{novel.code}/"
-    response = requests.get(url, headers=headers, cookies=cookies)
-    if "ncode" in response.url:
-        path = f"ncode"
-    elif "novel18" in response.url:
-        path = f"novel18"
-    else:
-        print(f"response.url error: {response.url}")
+    if novel.code not in alreadyDownloaded:
         continue
-    os.remove(f"{path}/{novel.code}.txt")
+    # url = f"https://ncode.syosetu.com/{novel.code}/"
+    # response = requests.get(url, headers=headers, cookies=cookies)
+    # if "ncode" in response.url:
+    #     path = f"ncode"
+    # elif "novel18" in response.url:
+    #     path = f"novel18"
+    # else:
+    #     print(f"response.url error: {response.url}")
+    #     continue
+    path = categoryForTitle[novel.code]
+    filePath = f"{path}/{novel.code}.txt"
+    if os.path.isfile(filePath):
+        os.remove(filePath)
     progress += 1
+    print(f"Cleaning up {progress}/{total} novels")

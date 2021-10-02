@@ -3,6 +3,7 @@ from urllib.request import Request, urlopen
 from pathlib import Path
 from natsort import natsorted
 from docx import Document
+from datetime import date
 import codecs, requests, os, shutil, re
 cookies = {
     'over18': 'yes',
@@ -36,17 +37,6 @@ class Novel:
         else:
             return f"{self.status} {self.code} {self.title}"
 
-def updateLibrary(novels):
-    library = open('library.txt', 'w')
-    print("To Read", file=library)
-    for novel in novels:
-        if novel.status == "Null":
-            print(novel, file=library)
-    print("\nReading", file=library)
-    for novel in novels:
-        if novel.status != "Null":
-            print(novel, file=library)
-
 library = open('library.txt', 'r')
 mode = "Null"
 dates = []
@@ -79,33 +69,45 @@ for line in library.readlines():
 
 ncode = os.listdir("ncode")
 novel18 = os.listdir("novel18")
+translated = len([f for f in os.listdir("translated")])
 toRead = list(filter(lambda novel: novel.status == "Null", novels))
 reading = list(filter(lambda novel: novel.status != "Null", novels))
 alreadyDownloaded = ncode + novel18
 alreadyDownloaded = [novel[:-4] for novel in alreadyDownloaded]
+category = [f"ncode" for file in ncode] + [f"novel18" for file in novel18]
+categoryForTitle = dict(zip(alreadyDownloaded, category))
 progress = 0
 
-for piece in translatedPieces:
-    print(f"Merging {progress}/{len(translatedPieces)} pieces")
-    for novel in novels:
+for novel in novels:
+    path = "Null"
+    if novel.title in alreadyDownloaded:
+        # url = f"https://ncode.syosetu.com/{novel.code}/"
+        # response = requests.get(url, headers=headers, cookies=cookies)
+        # if "ncode" in response.url:
+        #     path = f"ncode"
+        # elif "novel18" in response.url:
+        #     path = f"novel18"
+        # else:
+        #     print(f"response.url error: {response.url}")
+        #     continue
+        path = categoryForTitle[novel.title]
+    elif novel.code in alreadyDownloaded:
+        path = categoryForTitle[novel.code]
+
+    if not os.path.isfile(f"{path}/{novel.code}.txt"):
+        continue
+    japanese = tuple(codecs.open(f"{path}/{novel.code}.txt", "r", "utf-8"))
+    english = []
+    for piece in translatedPieces:
         if piece.startswith(novel.code):
             document = Document(f"translated/{piece}")
-            url = f"https://ncode.syosetu.com/{novel.code}/"
-            response = requests.get(url, headers=headers, cookies=cookies)
-            if "ncode" in response.url:
-                path = f"ncode"
-            elif "novel18" in response.url:
-                path = f"novel18"
-            else:
-                print(f"response.url error: {response.url}")
-                continue
-            japanese = tuple(codecs.open(f"{path}/{novel.code}.txt", "r", "utf-8"))
-            english = []
             for index, p in enumerate(document.paragraphs):
                 if index > 0:
                     english.append(p.text + '\n')
-            mergedFile = codecs.open(f"{path}/{novel.title}.txt", "w+", "utf-8")
-            for japanese, english in zip(japanese, english):
-                print(japanese.strip(), file=mergedFile)
-                print(english.strip(), file=mergedFile)
+    mergedFile = codecs.open(f"{path}/{novel.title}.txt", "a+", "utf-8")
+    print(f"Following chapters fetched on: {date.today()}", file=mergedFile)
+    for japanese, english in zip(japanese, english):
+        print(japanese.strip(), file=mergedFile)
+        print(english.strip(), file=mergedFile)
     progress += 1
+    print(f"Merging {progress}/{translated} pieces")

@@ -161,19 +161,22 @@ def writeChapters(soup, file, count):
 		if len(lines) == 1:
 			continue
 		else:
+			# 9 is first chapter to download
+			# if index < 9:
+			# 	continue
 			chapterUrl = f"https://ncode.syosetu.com/{chapter.find('a', href=True)['href']}"
 			chapterResponse = requests.get(chapterUrl, headers=headers, cookies=cookies)
 			chapterSoup = BeautifulSoup(chapterResponse.text, 'html.parser')
 			section = chapterSoup.find(['p'], class_=["chapter_title"])
 			title = chapterSoup.find(['p'], class_=["novel_subtitle"]).get_text().strip()
 			progress = chapterSoup.find(['div'], id=["novel_no"]).get_text().strip()
-			print(f"Words: {count}/100000 Progress: {progress}")
+			print(f"Characters: {count}/100000 Progress: {progress}")
 			if section:
 				count += len(f"セクション：{section.get_text().strip()}")
 			count += countLine() + len(f"章題：{title}") + len(f"章番号：{progress}") + len(f"日付：{lines[1]}")
 			count += countBody(chapterSoup)
 			if count > 100000:
-				print(f"Last chapter: {progress}")
+				# print(f"Last chapter: {progress}")
 				return progress
 			writeLine(file)
 			writeChapterTitleAndProgress(chapterSoup, file)
@@ -181,8 +184,8 @@ def writeChapters(soup, file, count):
 			writeBody(chapterSoup, file)
 
 def getChapter(chapterUrl):
-	chapterNum = int(chapterUrls[0].split()[0].split('/')[-1])
-	date = dates[chapterNum]
+	chapterNum = int(chapterUrl.split('/')[-1])
+	date = dates[chapterNum - 1]
 	chapterResponse = requests.get(chapterUrl, headers=headers, cookies=cookies)
 	chapterSoup = BeautifulSoup(chapterResponse.text, 'html.parser')
 	section = chapterSoup.find(['p'], class_=["chapter_title"])
@@ -197,8 +200,20 @@ def getChapter(chapterUrl):
 	print(f"日付：{date}", file=file)
 	writeBody(chapterSoup, file)
 
-def splitTextToTranslate(textFile, code):
-	
+def splitTextToTranslate(textFile, novel):
+	textFile = codecs.open(path, 'r', "utf-8")
+	splittedFile = codecs.open(f'toTranslate/{novel.code} 0.txt', "w+", "utf-8")
+	fileNum = 0
+	charNum = 0
+	for line in textFile.readlines():
+	    charNum += len(line)
+	    if charNum > 100000:
+	        charNum = 0
+	        fileNum += 1;
+	        splittedFile = codecs.open(f'toTranslate/{novel.code} {fileNum}.txt', "w+", "utf-8")
+	    splittedFile.write(line)
+	textFile.close()
+	splittedFile.close()
 
 library = open('library.txt', 'r')
 mode = "Null"
@@ -240,9 +255,16 @@ toRead = list(filter(lambda novel: novel.status == "Null", novels))
 reading = list(filter(lambda novel: novel.status != "Null", novels))
 alreadyDownloaded = ncode + novel18
 alreadyDownloaded = [novel[:-4] for novel in alreadyDownloaded]
+category = [f"ncode" for file in ncode] + [f"novel18" for file in novel18]
+categoryForTitle = dict(zip(alreadyDownloaded, category))
 progress = 1
 
-for novel in toRead:
+if not os.path.isdir("translated"):
+	os.mkdir("translated")
+
+for novel in novels:
+	if novel not in toRead:
+		continue
 	totalWords = 0
 	if novel.code in alreadyDownloaded:
 		print(f"\"{novel.code}\" already downloaded. Cannot download preview.")
@@ -266,7 +288,7 @@ for novel in toRead:
 		temp.write(f'{synopsis.get_text().strip()}\n')
 		totalWords += len(f'{synopsis.get_text().strip()}\n')
 		totalWords += writeLine(temp)
-		totalWords += writeTableOfContents(soup, temp)
+		# totalWords += writeTableOfContents(soup, temp)
 		newStatus = writeChapters(soup, temp, totalWords)
 		novel.status = newStatus
 	else:
@@ -286,25 +308,17 @@ for novel in toRead:
 	temp.close()
 	textFile.close()
 	os.remove("temp.txt")
-	
-	textFile = codecs.open(path, 'r', "utf-8")
-	splittedFile = codecs.open(f'toTranslate/{novel.code} 0.txt', "w+", "utf-8")
-	fileNum = 0
-	charNum = 0
-	for line in textFile.readlines():
-	    charNum += len(line)
-	    if charNum > 100000:
-	        charNum = 0
-	        fileNum += 1;
-	        splittedFile = codecs.open(f'toTranslate/{novel.code} {fileNum}.txt', "w+", "utf-8")
-	    splittedFile.write(line)
-	textFile.close()
-	splittedFile.close()
+	splitTextToTranslate(textFile, novel)
 
-for novel in reading:
-	os.mkdir("temp")
-	if novel.title not in alreadyDownloaded:
-		print(f"\"{novel.title}\" missing. Cannot update chapters.")
+for novel in novels:
+	if novel not in reading:
+		continue
+	if not os.path.isdir("temp"):
+		os.mkdir("temp")
+	# if novel.title not in alreadyDownloaded:
+	# 	print(f"\"{novel.title}\" missing. Cannot update chapters.")
+	# 	continue
+	if novel.status == "Short":
 		continue
 	url = f"https://ncode.syosetu.com/{novel.code}/"
 	response = requests.get(url, headers=headers, cookies=cookies)
@@ -313,7 +327,15 @@ for novel in reading:
 	end = int(list(filter(lambda piece: len(piece) > 0, getChapterUrls(soup)[-1].strip().split('/')))[-1])
 	if start == end:
 		continue
-	print(f"Downloading {progress}/{totalToUpdate} updates: {novel.title}")
+	else:
+		# print(f"Downloading {progress}/{totalToUpdate} updates: {novel.title}")
+		print(novel.title)
+		confirm = "null"
+		while confirm != "y" and confirm != "n":
+			confirm = input(f"There are {end - start} new chapter(s)! Download? (y/n): ")
+		if confirm == "n":
+			print(f"\"{novel.title}\" skipped.")
+			continue
 	path = "Null"
 	if "ncode" in response.url:
 		path = f"ncode/{novel.code}.txt"
@@ -321,17 +343,29 @@ for novel in reading:
 		path = f"novel18/{novel.code}.txt"
 	else:
 		print(f"response.url error: {response.url}")
+	# path = categoryForTitle[novel.title]
 
+	if start == 0:
+		synopsis = soup.find(id='novel_ex')
+		temp = codecs.open(f"temp/1.txt", 'w+', "utf-8")
+		writeTitleAuthor(soup, temp)
+		print(f"Nコード: {response.url}", file=temp)
+		temp.write(f'{synopsis.get_text().strip()}\n')
+		temp.close()
+
+	start += 1
 	chapterUrls = [f"https://ncode.syosetu.com/{novel.code}/{i}" for i in range(start, end + 1)]
+	# print(f"start = {start} end = {end}")
+	# print(chapterUrls)
 	dates = soup.find_all('dt', class_="long_update")
-	dates = [date.get_text().strip() for date in dates][start - 1:]
+	# dates = [date.get_text().strip() for date in dates][start - 1:]
+	dates = [date.get_text().strip() for date in dates]
 	totalToDownload = end - start + 1
 	pool = ThreadPool(3)
 	pool.map(getChapter, chapterUrls)
 	progress += 1
-
 	chapters = natsorted([chapter for chapter in os.listdir("temp")])
-	temp = codecs.open("temp.txt", 'w+', "utf-8")
+	temp = codecs.open("temp.txt", 'a+', "utf-8")
 	for chapter in chapters:
 		file = codecs.open(f"temp/{chapter}", 'r', "utf-8")
 		temp.write(file.read())
@@ -349,6 +383,8 @@ for novel in reading:
 	textFile.close()
 	os.remove("temp.txt")
 	shutil.rmtree("temp")
+	splitTextToTranslate(textFile, novel)
+	novel.status = f"{end}/{end}"
 
 textFilesToConvertToDocX = [file for file in os.listdir("toTranslate")]
 for file in textFilesToConvertToDocX:
@@ -357,7 +393,7 @@ for file in textFilesToConvertToDocX:
 	font.name = 'Yu Mincho'
 	font.size = Pt(11)
 	path = f"toTranslate/{file}"
-	textFile = codecs.open(path, "r", "utf-8")
+	textFile = codecs.open(path, mode="r", encoding="utf-8", errors='ignore')
 	lines = tuple(textFile)
 	for line in lines:
 		document.add_paragraph(line.strip())
