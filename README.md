@@ -28,6 +28,12 @@ this will merge the English and Japanese line by line for easier cross referenci
 
 Initial fetches will only fetch up to 100,000 characters of chapters. Any fetches afterwards will fetch how ever many chapters remain. Fetching of chapters will update the current chapter counter in the library.txt file.
 
+Remove temporary files after confirming merging completed successfully by running
+
+```bash
+python3 cleanup.py
+```
+
 To check if there are any new chapters based on the counter stored in your library.txt file, run
 
 ```bash
