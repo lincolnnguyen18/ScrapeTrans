@@ -3,7 +3,7 @@ Please use the ```downoad.py``` script in the barebones folder. It's simpler and
 1) Run the script by typing ```python download.py```; you may need to install the requests python package
 2) Enter the chapter URL, for example: [ncode.syosetu.com/n9350eg/]()
 3) Enter the chapter number (shown in its URL) of the first chapter you want to download, for example: ```9``` (if you want to download starting from [https://ncode.syosetu.com/n9350eg/9/]())
-4) Do the same for the last change (inclusive) you want to download, for example: ```25```
+4) Do the same for the last chapter (inclusive) you want to download, for example: ```25```
 
 # ScrapeTrans
 
