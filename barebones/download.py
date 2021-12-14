@@ -37,7 +37,6 @@ for i in range(startChapter, endChapter + 1):
     author = header.findAll(['a'])[1].get_text().strip()
     file = open(f'{author}{startChapter}-{endChapter}:{novelTitle}.txt', 'w')
     file.write(chapterUrl + '\n')
-    # test
   sectionTitle = soup.find(['div'], class_=["contents1"]).find(['p'])
   if sectionTitle:
     sectionTitle = sectionTitle.get_text().strip()
